@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,7 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -21,30 +23,61 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { toast } from "sonner";
 import { getCategories } from "@/actions/category/category";
-
 import { createService } from "@/actions/service/service";
 import { CreateService } from "@/interfaces/create.service.interface";
 import { CreateCategory } from "@/interfaces/create.category.interface";
 import { getProfessionals } from "@/actions/professional/professional";
-import {  Professional } from "@/interfaces/create.profesional.interface";
+import { Professional } from "@/interfaces/create.profesional.interface";
 
+const serviceFormSchema = z.object({
+  title: z.string()
+    .min(3, { message: "El título debe tener al menos 3 caracteres" })
+    .max(100, { message: "El título no puede exceder 100 caracteres" }),
+  name_c: z.string()
+    .min(3, { message: "El nombre del cliente debe tener al menos 3 caracteres" })
+    .max(100, { message: "El nombre del cliente no puede exceder 100 caracteres" }),
+  description: z.string()
+    .min(10, { message: "La descripción debe tener al menos 10 caracteres" })
+    .max(500, { message: "La descripción no puede exceder 500 caracteres" }),
+  price: z.string()
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
+      message: "El precio debe ser un número válido y mayor o igual a 0",
+    }),
+  categoriesId: z.string().optional(),
+  usersId: z.string()
+    .min(1, { message: "Debe seleccionar un profesional" }),
+});
+
+type ServiceFormValues = z.infer<typeof serviceFormSchema>;
 
 export default function ServiceForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<CreateCategory[]>([]);
-  const [professionals, setProfessionals] = useState<Professional[]>([]); 
-  const [formData, setFormData] = useState({
-    title: "",
-    name_c: "",
-    description: "",
-    price: "",
-    categoriesId: "",
-    usersId: "", 
-  });
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
 
+  const form = useForm<ServiceFormValues>({
+    resolver: zodResolver(serviceFormSchema),
+    defaultValues: {
+      title: "",
+      name_c: "",
+      description: "",
+      price: "",
+      categoriesId: "",
+      usersId: "",
+    },
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -65,52 +98,17 @@ export default function ServiceForm() {
     fetchData();
   }, []);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      categoriesId: value === "none" ? "" : value,
-    }));
-  };
-
-  const handleProfessionalChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      usersId: value === "none" ? "" : value,
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (values: ServiceFormValues) => {
     setIsSubmitting(true);
-
+    
     try {
-
-      if (
-        !formData.title.trim() ||
-        !formData.name_c.trim() ||
-        !formData.description.trim() ||
-        !formData.price ||
-        !formData.usersId 
-      ) {
-        toast.error("Todos los campos son requeridos");
-        setIsSubmitting(false);
-        return;
-      }
-
       const serviceData: CreateService = {
-        title: formData.title,
-        name_c: formData.name_c,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        categoriesId: formData.categoriesId || undefined,
-        usersId: formData.usersId, 
+        title: values.title,
+        name_c: values.name_c,
+        description: values.description,
+        price: parseFloat(values.price),
+        categoriesId: values.categoriesId || undefined,
+        usersId: values.usersId,
       };
 
       const result = await createService(serviceData);
@@ -131,120 +129,164 @@ export default function ServiceForm() {
 
   return (
     <Card className="max-w-xl mx-auto">
-      <form onSubmit={handleSubmit}>
-        <CardHeader>
-          <CardTitle>Nuevo Servicio</CardTitle>
-          <CardDescription>
-            Crea un nuevo servicio para tus clientes
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Título del servicio</Label>
-            <Input
-              id="title"
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardHeader>
+            <CardTitle>Nuevo Servicio</CardTitle>
+            <CardDescription>
+              Crea un nuevo servicio para tus clientes
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
               name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="Ej. Corte de Cabello"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Título del servicio</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej. Corte de Cabello" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name_c">Nombre del cliente</Label>
-            <Input
-              id="name_c"
+            
+            <FormField
+              control={form.control}
               name="name_c"
-              value={formData.name_c}
-              onChange={handleChange}
-              placeholder="Ej. Juan Pérez"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nombre del cliente</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej. Juan Pérez" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="categoriesId">Seleccionar categoría</Label>
-            <Select
-              value={formData.categoriesId || "none"}
-              onValueChange={handleCategoryChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona una categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin categoría</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="usersId">Seleccionar profesional</Label>
-            <Select
-              value={formData.usersId || "none"}
-              onValueChange={handleProfessionalChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un profesional" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin asignar</SelectItem>
-                {professionals.map((professional) => (
-                  <SelectItem key={professional.id} value={professional.id}>
-                    {professional.full_name} - {professional.specialty}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
-            <Textarea
-              id="description"
+            
+            <FormField
+              control={form.control}
+              name="categoriesId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Seleccionar categoría</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una categoría" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Sin categoría">Sin categoría</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Opcional: Selecciona una categoría para este servicio
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="usersId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Seleccionar profesional</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un profesional" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {professionals.map((professional) => (
+                        <SelectItem key={professional.id} value={professional.id}>
+                          {professional.full_name} - {professional.specialty}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
               name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Describe detalladamente este servicio"
-              rows={4}
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descripción</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describe detalladamente este servicio" 
+                      rows={4}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="price">Precio</Label>
-            <Input
-              id="price"
+            
+            <FormField
+              control={form.control}
               name="price"
-              type="number"
-              value={formData.price}
-              onChange={handleChange}
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Precio</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between p-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creando..." : "Crear Servicio"}
-          </Button>
-        </CardFooter>
-      </form>
+          </CardContent>
+          
+          <CardFooter className="flex justify-between p-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Creando..." : "Crear Servicio"}
+            </Button>
+          </CardFooter>
+        </form>
+      </Form>
     </Card>
   );
 }

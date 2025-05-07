@@ -2,174 +2,250 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+// import Image from 'next/image'  
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { 
+  Form, 
+  FormControl, 
+  FormDescription, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
 import { toast } from "sonner";
 import { createProfesional } from "@/actions/professional/professional";
 import { CreateProfessional } from "@/interfaces/create.profesional.interface";
 
+const professionalFormSchema = z.object({
+  full_name: z.string()
+    .min(3, { message: "El nombre debe tener al menos 3 caracteres" })
+    .max(100, { message: "El nombre no puede exceder 100 caracteres" }),
+  city: z.string()
+    .min(3, { message: "La ciudad debe tener al menos 3 caracteres" })
+    .max(50, { message: "La ciudad no puede exceder 50 caracteres" }),
+  specialty: z.string()
+    .min(3, { message: "La especialidad debe tener al menos 3 caracteres" })
+    .max(50, { message: "La especialidad no puede exceder 50 caracteres" }),
+  contact: z.string()
+    .min(7, { message: "El contacto debe tener al menos 7 dígitos" })
+    .regex(/^\d+$/, { message: "El contacto debe contener solo números" }),
+  photo: z.any().optional()
+});
 
-export default function Page() {
+type ProfessionalFormValues = z.infer<typeof professionalFormSchema>;
+
+export default function ProfessionalForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    full_name: "",
-    city: "",
-    specialty: "",
-    contact: "",
-    photo: ""
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  
+  // Inicializar formulario con React Hook Form
+  const form = useForm<ProfessionalFormValues>({
+    resolver: zodResolver(professionalFormSchema),
+    defaultValues: {
+      full_name: "",
+      city: "",
+      specialty: "",
+      contact: "",
+      photo: undefined
+    },
   });
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
+  // Manejar el cambio en el campo de foto
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-
+      // Actualizar el valor en el formulario
+      form.setValue("photo", file);
+      
+      // Crear vista previa
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, photo: reader.result as string }));
+        setPhotoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
-   const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setIsSubmitting(true);
   
-      try {
-
-        if (
-          !formData.full_name.trim() ||
-          !formData.city.trim() ||
-          !formData.specialty.trim() ||
-          !formData.contact.trim()
-
-        ) {
-          toast.error("Todos los campos son requeridos");
-          setIsSubmitting(false);
-          return;
-        }
-  
-        const professionalData:CreateProfessional = {
-          full_name: formData.full_name,
-          city: formData.city,
-          specialty: formData.specialty,
-          contact: parseFloat(formData.contact),
-          photo: formData.photo || undefined
-        };
-  
-        const result = await createProfesional(professionalData);
-  
-        if (result) {
-          toast.success("profesional creado con éxito");
-          router.push("/dashboard/services/create");
-        } else {
-          toast.error("Error al crear el profesional");
-        }
-      } catch (error) {
-        console.error("Error al crear profesional:", error);
-        toast.error("No se pudo crear el profesional");
-      } finally {
-        setIsSubmitting(false);
+  // Función para manejar el envío del formulario
+  const onSubmit = async (values: ProfessionalFormValues) => {
+    setIsSubmitting(true);
+    
+    try {
+      // Log de los datos antes de enviar
+      console.log("Datos a enviar:", {
+        ...values,
+        photo: photoPreview ? "Base64 image (available)" : undefined
+      });
+      
+      const professionalData: CreateProfessional = {
+        full_name: values.full_name,
+        city: values.city,
+        specialty: values.specialty,
+        contact: parseFloat(values.contact),
+        photo: photoPreview || undefined
+      };
+      
+      const result = await createProfesional(professionalData);
+      
+      if (result) {
+        toast.success("Profesional creado con éxito");
+        router.push("/dashboard/services/create");
+      } else {
+        console.error("Respuesta vacía del servidor");
+        toast.error("Error al crear el profesional: No se recibió respuesta del servidor");
       }
-    };
+    } catch (error) {
+      // Mostrar error detallado
+      console.error("Error detallado:", error);
+      let errorMessage = "No se pudo crear el profesional";
+      
+      if (error instanceof Error) {
+        errorMessage += `: ${error.message}`;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   return (
     <Card className="max-w-xl mx-auto">
-      <form onSubmit={handleSubmit}>
-        <CardHeader>
-          <CardTitle>Nuevo Profesional</CardTitle>
-          <CardDescription>
-            Registra un nuevo profesional en el sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Nombre completo</Label>
-            <Input
-              id="full_name"
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardHeader>
+            <CardTitle>Nuevo Profesional</CardTitle>
+            <CardDescription>
+              Registra un nuevo profesional en el sistema
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
               name="full_name"
-              value={formData.full_name}
-              onChange={handleChange}
-              placeholder="Ej. Juan Pérez"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nombre completo</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej. Juan Pérez" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="city">Ciudad</Label>
-            <Input
-              id="city"
+            
+            <FormField
+              control={form.control}
               name="city"
-              value={formData.city}
-              onChange={handleChange}
-              placeholder="Ej. Medellín"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ciudad</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej. Medellín" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="specialty">Especialidad</Label>
-            <Input
-              id="specialty"
+            
+            <FormField
+              control={form.control}
               name="specialty"
-              value={formData.specialty}
-              onChange={handleChange}
-              placeholder="Ej. Estilista"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Especialidad</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej. Estilista" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="contact">Contacto</Label>
-            <Input
-              id="contact"
+            
+            <FormField
+              control={form.control}
               name="contact"
-              type="number"
-              value={formData.contact}
-              onChange={handleChange}
-              placeholder="Ej. 3001234567"
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contacto</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="text" 
+                      placeholder="Ej. 3001234567" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Número telefónico de contacto
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
+            
+            {/* Campo de foto - Manejo especial */}
+            <FormItem>
+              <FormLabel>Foto (opcional)</FormLabel>
+              <FormControl>
+                <Input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+              </FormControl>
+              <FormDescription>
+                Sube una foto del profesional
+              </FormDescription>
+              <FormMessage />
+              
+              {photoPreview && (
+                <div className="mt-2">
+                  <p className="text-sm text-muted-foreground">Vista previa:</p>
+                  <div className="mt-1 relative rounded-md overflow-hidden w-24 h-24">
+                    <img 
+                      src={photoPreview} 
+                      alt="Vista previa" 
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                </div>
+              )}
+            </FormItem>
+          </CardContent>
           
-          <div className="space-y-2">
-            <Label htmlFor="photo">Foto (opcional)</Label>
-            <Input
-              id="photo"
-              name="photo"
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-            />
-            {formData.photo && (
-              <div className="mt-2">
-                <p className="text-sm text-muted-foreground">Vista previa:</p>
-                
-              </div>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between p-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Registrando..." : "Registrar Profesional"}
-          </Button>
-        </CardFooter>
-      </form>
+          <CardFooter className="flex justify-between p-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Registrando..." : "Registrar Profesional"}
+            </Button>
+          </CardFooter>
+        </form>
+      </Form>
     </Card>
   );
 }

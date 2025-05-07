@@ -12,7 +12,7 @@ export const createProfesional = async (data: CreateProfessional) => {
     });
     return response;
   } catch (error) {
-    console.log(error);
+return error
   }
 };
 
