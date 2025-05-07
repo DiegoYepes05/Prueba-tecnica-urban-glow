@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, ChevronDown, Home, Info, BookOpen, Phone, ShoppingBag } from "lucide-react"
+import { Menu, X, ChevronDown, Home, Info, BookOpen, Phone } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -56,9 +56,9 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/dashboard/home" className="flex items-center gap-2">
           <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-xl">
-            N
+            PT
           </div>
           <span className="font-bold text-xl text-white">
          Prueba técnica
