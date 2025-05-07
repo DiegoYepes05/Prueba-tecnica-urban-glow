@@ -34,7 +34,6 @@ export const createService = async (data: CreateService) => {
 
     return services;
   } catch (error) {
-    console.error("Error al crear servicio:", error);
-    throw error;
+  return error;
   }
 };
