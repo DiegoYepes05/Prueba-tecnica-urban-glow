@@ -21,6 +21,7 @@ export const getProfessionals = async () => {
     const response = await prisma.users.findMany({});
     return response;
   } catch (error) {
-    return error;
+    console.log(error);
+    throw error;
   }
 };
