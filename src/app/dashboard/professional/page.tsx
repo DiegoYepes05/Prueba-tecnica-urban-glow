@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-// import Image from 'next/image'  
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,6 +60,13 @@ export default function ProfessionalForm() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Verificar tamaño del archivo (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("La imagen no debe exceder 5MB");
+        e.target.value = '';
+        return;
+      }
+      
       // Actualizar el valor en el formulario
       form.setValue("photo", file);
       
@@ -73,37 +79,44 @@ export default function ProfessionalForm() {
     }
   };
   
+  // Función para procesar la imagen antes de enviar
+  const processImage = (base64String: string | null): string | undefined => {
+    if (!base64String) return undefined;
+    
+    // Obtener solo la parte de datos del base64 (remover el prefijo)
+    const base64Data = base64String.split(',')[1];
+    return base64Data;
+  };
+  
   // Función para manejar el envío del formulario
   const onSubmit = async (values: ProfessionalFormValues) => {
     setIsSubmitting(true);
     
     try {
-      // Log de los datos antes de enviar
-      console.log("Datos a enviar:", {
-        ...values,
-        photo: photoPreview ? "Base64 image (available)" : undefined
-      });
+      // Procesar la imagen
+      const processedPhoto = processImage(photoPreview);
       
       const professionalData: CreateProfessional = {
         full_name: values.full_name,
         city: values.city,
         specialty: values.specialty,
-        contact: parseFloat(values.contact),
-        photo: photoPreview || undefined
+        contact: parseInt(values.contact, 10), // Usar parseInt en lugar de parseFloat
+        photo: processedPhoto
       };
       
-      const result = await createProfesional(professionalData);
+      console.log("Enviando datos:", {
+        ...professionalData,
+        photo: processedPhoto ? "[Imagen en base64]" : undefined
+      });
       
-      if (result) {
-        toast.success("Profesional creado con éxito");
-        router.push("/dashboard/services/create");
-      } else {
-        console.error("Respuesta vacía del servidor");
-        toast.error("Error al crear el profesional: No se recibió respuesta del servidor");
+      const result = await createProfesional(professionalData);
+      if(result) {
+        toast.success("Profesional creado exitosamente");
+
       }
+     
     } catch (error) {
-      // Mostrar error detallado
-      console.error("Error detallado:", error);
+      console.error("Error al crear profesional:", error);
       let errorMessage = "No se pudo crear el profesional";
       
       if (error instanceof Error) {
@@ -212,7 +225,7 @@ export default function ProfessionalForm() {
                 />
               </FormControl>
               <FormDescription>
-                Sube una foto del profesional
+                Sube una foto del profesional (máx. 5MB)
               </FormDescription>
               <FormMessage />
               
