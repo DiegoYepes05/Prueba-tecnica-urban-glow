@@ -57,15 +57,15 @@ export function Navbar() {
       <div className="container mx-auto px-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/dashboard/home" className="flex items-center gap-2">
-          <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-xl">
-            PT
-          </div>
+        <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold">
+  PT
+</div>
           <span className="font-bold text-xl text-white">
          Prueba técnica
           </span>
         </Link>
 
-        {/* Desktop Navigation */}
+
         <nav className="hidden lg:flex items-center gap-1">
           {routes.map((route) => {
             if (route.submenu) {

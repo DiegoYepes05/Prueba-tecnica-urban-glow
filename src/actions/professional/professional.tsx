@@ -1,4 +1,4 @@
-"use server";
+'use server'
 
 import { PrismaClient } from "@/generated/prisma";
 import { CreateProfessional } from "@/interfaces/create.profesional.interface";
@@ -12,16 +12,17 @@ export const createProfesional = async (data: CreateProfessional) => {
     });
     return response;
   } catch (error) {
-    return error;
+    console.log(error)
   }
 };
 
+
 export const getProfessionals = async () => {
   try {
-    const response = await prisma.users.findMany({});
+    const response = await prisma.users.findMany({
+    });
     return response;
   } catch (error) {
     console.log(error);
-    throw error;
   }
-};
+}

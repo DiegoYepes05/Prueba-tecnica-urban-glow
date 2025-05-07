@@ -32,7 +32,8 @@ const professionalFormSchema = z.object({
     .min(3, { message: "La especialidad debe tener al menos 3 caracteres" })
     .max(50, { message: "La especialidad no puede exceder 50 caracteres" }),
   contact: z.string()
-    .min(7, { message: "El contacto debe tener al menos 7 dígitos" })
+    .min(3, { message: "El contacto debe tener al menos 3 dígitos" })
+    .max(7, { message: "El contacto no puede exceder 7 dígitos" })
     .regex(/^\d+$/, { message: "El contacto debe contener solo números" }),
   photo: z.any().optional()
 });
@@ -44,7 +45,7 @@ export default function ProfessionalForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
-  // Inicializar formulario con React Hook Form
+
   const form = useForm<ProfessionalFormValues>({
     resolver: zodResolver(professionalFormSchema),
     defaultValues: {
@@ -56,21 +57,21 @@ export default function ProfessionalForm() {
     },
   });
   
-  // Manejar el cambio en el campo de foto
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Verificar tamaño del archivo (máximo 5MB)
+
       if (file.size > 5 * 1024 * 1024) {
         toast.error("La imagen no debe exceder 5MB");
         e.target.value = '';
         return;
       }
       
-      // Actualizar el valor en el formulario
+
       form.setValue("photo", file);
       
-      // Crear vista previa
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string);
@@ -79,28 +80,28 @@ export default function ProfessionalForm() {
     }
   };
   
-  // Función para procesar la imagen antes de enviar
+
   const processImage = (base64String: string | null): string | undefined => {
     if (!base64String) return undefined;
     
-    // Obtener solo la parte de datos del base64 (remover el prefijo)
+
     const base64Data = base64String.split(',')[1];
     return base64Data;
   };
   
-  // Función para manejar el envío del formulario
+
   const onSubmit = async (values: ProfessionalFormValues) => {
     setIsSubmitting(true);
     
     try {
-      // Procesar la imagen
+
       const processedPhoto = processImage(photoPreview);
       
       const professionalData: CreateProfessional = {
         full_name: values.full_name,
         city: values.city,
         specialty: values.specialty,
-        contact: parseInt(values.contact, 10), // Usar parseInt en lugar de parseFloat
+        contact: parseInt(values.contact, 10), 
         photo: processedPhoto
       };
       
@@ -110,9 +111,14 @@ export default function ProfessionalForm() {
       });
       
       const result = await createProfesional(professionalData);
+      
       if(result) {
         toast.success("Profesional creado exitosamente");
 
+        router.push("/dashboard/professional"); 
+      } else {
+
+        toast.error("No se pudo crear el profesional. La respuesta del servidor no fue exitosa.");
       }
      
     } catch (error) {
